@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>2B Communication | Luxury Pro V13</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.cdnfonts.com/css2?family=SolaimanLipi&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --accent: #818cf8;
+            --dark-bg: #0b0f19;
+            --card-bg: #161d2f;
+        }
+        body { 
+            font-family: 'SolaimanLipi', sans-serif; 
+            background: radial-gradient(circle at top left, #1e1b4b, #0b0f19); 
+            color: #e2e8f0; 
+            margin: 0; 
+            min-height: 100vh;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        .luxury-card { 
+            background: rgba(22, 29, 47, 0.7); 
+            backdrop-filter: blur(10px);
+            border-radius: 16px; 
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+        .pro-input { 
+            background: #1f2937 !important; 
+            color: #f8fafc !important; 
+            border: 1px solid #374151 !important; 
+            transition: all 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .pro-input:focus { 
+            border-color: var(--primary) !important; 
+            ring: 2px rgba(99, 102, 241, 0.2); 
+            outline: none;
+        }
+        .btn-glow {
+            transition: all 0.3s;
+            box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 15px 2px rgba(99, 102, 241, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        @media print {
+            .no-print { display: none !important; }
+            #print-zone { display: block !important; }
+            .page { page-break-after: always; position: relative; width: 10in; height: 7in; margin: 0; overflow: hidden; background: white !important; }
+            .bg-template { position: absolute; top: 0; left: 0; width: 10in; height: 7in; z-index: 1; }
+            .plate-info { 
+                position: absolute; z-index: 10; left: 315px; width: 287px;
+                text-align: left; font-size: 26pt; color: black; font-weight: bold; 
+                white-space: nowrap; display: flex; align-items: center;
+            }
+            .auto-fit { display: inline-block; transform-origin: left center; }
+            .p-owner { top: 235px; } .p-parent { top: 285px; } .p-hld { top: 335px; }
+            .p-ward { top: 385px; } .p-road { top: 435px; }
+            .p-qr { position: absolute; z-index: 20; left: 678px; top: 220px; width: 185px; }
+        }
+        #print-zone { display: none; }
+    </style>
+</head>
+<body onload="initApp()">
+
+<div id="main-content" class="hidden no-print max-w-5xl mx-auto p-6">
+    <div class="flex justify-between items-center mb-10">
+        <div>
+            <h1 class="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">2B COMMUNICATION</h1>
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Premium Printing & Advertising Solutions</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <p id="user-display" class="text-xs font-bold text-slate-300"></p>
+                <button onclick="logout()" class="text-[10px] text-red-400 hover:text-red-300 uppercase tracking-tighter font-bold">Sign Out</button>
+            </div>
+            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg">2B</div>
+        </div>
+    </div>
+
+    <div id="admin-panel" class="hidden space-y-6 mb-10">
+        <div class="luxury-card p-6 border-l-4 border-indigo-500">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xs font-black text-indigo-300 uppercase tracking-[0.2em]">Management Console</h2>
+                <div class="bg-indigo-500/20 px-4 py-1 rounded-full border border-indigo-500/30 text-[10px] font-black text-indigo-300">ENTRIES: <span id="total-count">0</span></div>
+            </div>
+            
+            <div id="user-stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-[10px]"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                <input type="text" id="new-user" placeholder="User ID" class="pro-input rounded-xl px-4 py-3 text-sm">
+                <input type="text" id="new-pass" placeholder="Password" class="pro-input rounded-xl px-4 py-3 text-sm">
+                <button onclick="createUser()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl btn-glow transition-all">UPDATE USER</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700/50">
+                <label class="block p-4 border border-dashed border-slate-600 rounded-2xl hover:bg-slate-800/50 cursor-pointer transition-all">
+                    <p class="text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-widest">Master Plate Template</p>
+                    <input type="file" onchange="loadImg(this, 'plate')" class="text-[10px] w-full text-slate-500">
+                </label>
+                <label class="block p-4 border border-dashed border-slate-600 rounded-2xl hover:bg-slate-800/50 cursor-pointer transition-all">
+                    <p class="text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-widest">ID Card Template</p>
+                    <input type="file" onchange="loadImg(this, 'id')" class="text-[10px] w-full text-slate-500">
+                </label>
+            </div>
+            <button onclick="deleteAllData()" class="mt-4 w-full text-[9px] font-bold text-red-500/70 hover:text-red-400 uppercase tracking-[0.3em]">Purge All Records</button>
+        </div>
+    </div>
+
+    <div class="luxury-card p-8 mb-8">
+        <h3 class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest">Record Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <input type="hidden" id="edit-id">
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-indigo-400 ml-1">মালিকের নাম</label>
+                <input type="text" id="owner" class="pro-input rounded-xl px-4 py-3">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-indigo-400 ml-1">পিতা/স্বামীর নাম</label>
+                <input type="text" id="parent" class="pro-input rounded-xl px-4 py-3">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-indigo-400 ml-1">হোল্ডিং নং</label>
+                <input type="text" id="hld" class="pro-input rounded-xl px-4 py-3">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-indigo-400 ml-1">ওয়ার্ড নং</label>
+                <input type="text" id="ward" class="pro-input rounded-xl px-4 py-3">
+            </div>
+            <div class="md:col-span-2 space-y-1">
+                <label class="text-[10px] font-bold text-indigo-400 ml-1">ঠিকানা</label>
+                <textarea id="road" class="pro-input rounded-xl px-4 py-3 h-20"></textarea>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-8">
+            <button id="save-btn" onclick="saveData()" class="flex-1 bg-gradient-to-r from-indigo-600 to-indigo-500 py-4 rounded-xl font-bold text-sm btn-glow">SAVE RECORD</button>
+            <button id="cancel-btn" onclick="resetForm()" class="hidden bg-slate-700 px-8 rounded-xl font-bold text-sm">CANCEL</button>
+        </div>
+    </div>
+
+    <div id="admin-btns" class="hidden grid grid-cols-2 gap-6 mb-10">
+        <button onclick="buildZip()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all">📂 Export SVG Batch</button>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl btn-glow transition-all">🖨️ Launch Print Engine</button>
+    </div>
+
+    <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest ml-1">Recent Activity</h3>
+    <div id="list" class="space-y-2 max-h-[500px] overflow-y-auto pr-2"></div>
+</div>
+
+<div id="print-zone"></div>
+
+<script>
+    // আপনার নতুন মোস্তাফিজ প্রজেক্টের লিঙ্ক এখানে আপডেট করে দেওয়া হয়েছে
+    const firebaseConfig = { databaseURL: "https://mostafiz-7ac89-default-rtdb.firebaseio.com/" };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let entries = []; let usersData = {}; 
+    let currentUser = sessionStorage.getItem('user_2b');
+    let idImg = ""; let plateImg = "";
+
+    function initApp() {
+        database.ref('users').on('value', (s) => {
+            usersData = s.val() || { "admin": { pass: "forhad123" } };
+            if (currentUser && usersData[currentUser]) {
+                document.getElementById('main-content').classList.remove('hidden');
+                document.getElementById('user-display').innerText = currentUser.toUpperCase();
+                if(currentUser === 'admin') {
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                    document.getElementById('admin-btns').classList.remove('hidden');
+                }
+                syncData();
+            } else {
+                const id = prompt("ID:").toLowerCase().trim(); 
+                const p = prompt("Pass:");
+                if(id && usersData[id] && usersData[id].pass === p) {
+                    sessionStorage.setItem('user_2b', id); location.reload();
+                } else { alert("Access Denied"); location.reload(); }
+            }
+        });
+    }
+
+    function syncData() {
+        database.ref('entries').on('value', (s) => {
+            const val = s.val();
+            entries = val ? Object.keys(val).map(id => ({...val[id], id})) : [];
+            renderStats(); renderList(); renderPrint();
+        });
+    }
+
+    function renderStats() {
+        const counts = {}; entries.forEach(e => counts[e.user] = (counts[e.user] || 0) + 1);
+        if(currentUser === 'admin') {
+            document.getElementById('total-count').innerText = entries.length;
+            let html = "";
+            Object.keys(usersData).forEach(u => {
+                html += `<div class="bg-slate-900/50 p-3 rounded-xl flex justify-between items-center border border-slate-800">
+                    <span class="font-bold uppercase tracking-tighter text-slate-300">${u} <span class="text-indigo-400">(${counts[u]||0})</span></span>
+                    <button onclick="delUser('${u}')" class="text-red-900 hover:text-red-500 font-black">×</button>
+                </div>`;
+            });
+            document.getElementById('user-stats').innerHTML = html;
+        }
+    }
+
+    function getFullDataText(d) {
+        return `মালিক: ${d.owner}\nপিতা: ${d.parent}\nহোল্ডিং: ${d.hld}\nওয়ার্ড: ${d.ward}\nঠিকানা: ${d.road}`;
+    }
+
+    function saveData() {
+        const data = { owner: document.getElementById('owner').value, parent: document.getElementById('parent').value, hld: document.getElementById('hld').value, ward: document.getElementById('ward').value, road: document.getElementById('road').value, user: currentUser };
+        if(!data.owner || !data.hld) return alert("Required fields missing");
+        const eid = document.getElementById('edit-id').value;
+        if(eid) database.ref('entries/'+eid).update(data); else database.ref('entries').push(data);
+        resetForm();
+    }
+
+    function editData(id) {
+        const d = entries.find(e => e.id === id);
+        document.getElementById('edit-id').value = id;
+        ['owner','parent','hld','ward','road'].forEach(k => document.getElementById(k).value = d[k]);
+        document.getElementById('save-btn').innerText = "UPDATE RECORD";
+        document.getElementById('cancel-btn').classList.remove('hidden');
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function resetForm() {
+        document.getElementById('edit-id').value = "";
+        ['owner','parent','hld','ward','road'].forEach(k => document.getElementById(k).value = "");
+        document.getElementById('save-btn').innerText = "SAVE RECORD";
+        document.getElementById('cancel-btn').classList.add('hidden');
+    }
+
+    function renderList() {
+        const list = (currentUser === 'admin') ? entries : entries.filter(e => e.user === currentUser);
+        document.getElementById('list').innerHTML = list.slice().reverse().map(e => `
+            <div class="luxury-card p-4 flex justify-between items-center group transition-all hover:bg-slate-800/40">
+                <div class="flex items-center gap-4">
+                    <div class="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-500">${e.hld}</div>
+                    <div><p class="font-bold text-slate-200 text-sm">${e.owner}</p><p class="text-[9px] text-indigo-400/60 uppercase font-black tracking-widest">${e.user}</p></div>
+                </div>
+                <div class="flex gap-4 opacity-40 group-hover:opacity-100 transition-all">
+                    <button onclick="editData('${e.id}')" class="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Edit</button>
+                    ${currentUser==='admin'?'<button onclick="database.ref(\'entries/\'+ \''+e.id+'\').remove()" class="text-red-900 font-bold">×</button>':''}
+                </div>
+            </div>`).join('');
+    }
+
+    function getSvgText(text, x, y, maxWidth, fontSize, isBold=false, color="black") {
+        let estW = text.length * (fontSize * 0.55);
+        let sX = estW > maxWidth ? (maxWidth / estW) : 1;
+        return `<text x="${x}" y="${y}" font-family="Arial" font-size="${fontSize}" ${isBold?'font-weight="bold"':''} fill="${color}" style="transform: scale(${sX}, 1); transform-origin: ${x}px ${y}px;">${text}</text>`;
+    }
+
+    async function buildZip() {
+        if(!idImg) return alert("ID Template Required");
+        const zip = new JSZip();
+        for(let d of entries) {
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(getFullDataText(d))}`;
+            const qB64 = await new Promise(ok => { fetch(qrUrl).then(r => r.blob()).then(b => { const rd = new FileReader(); rd.onloadend = () => ok(rd.result); rd.readAsDataURL(b); }); });
+            const svg = `<?xml version="1.0" encoding="UTF-8"?><svg width="85.5mm" height="54mm" viewBox="0 0 85.5 54" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                <image xlink:href="${idImg}" x="0" y="0" width="85.5" height="54" preserveAspectRatio="none"/>
+                ${getSvgText(d.owner, 25.5, 21.5, 36, 3.2, true)}
+                ${getSvgText(d.parent, 25.5, 26.4, 36, 3.2)}
+                ${getSvgText(d.hld, 25.5, 31.3, 36, 3.2, true, "white")}
+                ${getSvgText(d.ward, 25.5, 36.2, 36, 3.2)}
+                ${getSvgText(d.road, 25.5, 41.1, 36, 3.2)}
+                <image xlink:href="${qB64}" x="60" y="26" height="22.86" width="22.86"/>
+            </svg>`;
+            zip.file(`${d.owner}_${d.hld.replace(/\//g,'_')}.svg`, svg);
+        }
+        zip.generateAsync({type:"blob"}).then(c => { const a = document.createElement('a'); a.href = URL.createObjectURL(c); a.download = "2B_IDs_Export.zip"; a.click(); });
+    }
+
+    function renderPrint() {
+        if(!plateImg) return;
+        document.getElementById('print-zone').innerHTML = entries.map(e => {
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getFullDataText(e))}`;
+            return `<div class="page"><img src="${plateImg}" class="bg-template">
+                <div class="plate-info p-owner"><span class="auto-fit">${e.owner}</span></div>
+                <div class="plate-info p-parent"><span class="auto-fit">${e.parent}</span></div>
+                <div class="plate-info p-hld"><span class="auto-fit">${e.hld}</span></div>
+                <div class="plate-info p-ward"><span class="auto-fit">${e.ward}</span></div>
+                <div class="plate-info p-road"><span class="auto-fit">${e.road}</span></div>
+                <img src="${qrUrl}" class="p-qr">
+            </div>`;
+        }).join('');
+        
+        setTimeout(() => { 
+            document.querySelectorAll('.plate-info').forEach(b => { 
+                const s = b.querySelector('.auto-fit'); 
+                if(s) { 
+                    const boxW = 287; // 76mm Limit
+                    const textW = s.offsetWidth;
+                    if(textW > boxW) {
+                        const sc = boxW / textW;
+                        s.style.transform = `scale(${sc}, 1)`; 
+                    } else {
+                        s.style.transform = `scale(1, 1)`;
+                    }
+                } 
+            }); 
+        }, 500);
+    }
+
+    function loadImg(input, type) { if (input.files && input.files[0]) { const rd = new FileReader(); rd.onload = (e) => { if(type === 'id') idImg = e.target.result; else { plateImg = e.target.result; renderPrint(); } }; rd.readAsDataURL(input.files[0]); } }
+    function createUser() { const u = document.getElementById('new-user').value.toLowerCase().trim(); const p = document.getElementById('new-pass').value.trim(); if(u && p) database.ref('users/'+u).update({pass:p}); }
+    function delUser(u) { if(u !== 'admin' && confirm("Delete user?")) database.ref('users/'+u).remove(); }
+    function logout() { sessionStorage.removeItem('user_2b'); location.reload(); }
+    function deleteAllData() { if(confirm("Permanently delete all entry data?")) database.ref('entries').remove(); }
+</script>
+</body>
+</html>
