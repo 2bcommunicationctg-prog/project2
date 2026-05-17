@@ -99,23 +99,25 @@
             
             <div id="user-stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-[10px]"></div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-                <input type="text" id="new-user" placeholder="User ID" class="pro-input rounded-xl px-4 py-3 text-sm">
-                <input type="text" id="new-pass" placeholder="Password" class="pro-input rounded-xl px-4 py-3 text-sm">
-                <button onclick="createUser()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl btn-glow transition-all">UPDATE USER</button>
-            </div>
+            <div id="admin-only-controls" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                    <input type="text" id="new-user" placeholder="User ID" class="pro-input rounded-xl px-4 py-3 text-sm">
+                    <input type="text" id="new-pass" placeholder="Password" class="pro-input rounded-xl px-4 py-3 text-sm">
+                    <button onclick="createUser()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl btn-glow transition-all">UPDATE USER</button>
+                </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700/50">
-                <label class="block p-4 border border-dashed border-slate-600 rounded-2xl hover:bg-slate-800/50 cursor-pointer transition-all">
-                    <p class="text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-widest">Master Plate Template</p>
-                    <input type="file" onchange="loadImg(this, 'plate')" class="text-[10px] w-full text-slate-500">
-                </label>
-                <label class="block p-4 border border-dashed border-slate-600 rounded-2xl hover:bg-slate-800/50 cursor-pointer transition-all">
-                    <p class="text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-widest">ID Card Template</p>
-                    <input type="file" onchange="loadImg(this, 'id')" class="text-[10px] w-full text-slate-500">
-                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-700/50">
+                    <label class="block p-4 border border-dashed border-slate-600 rounded-2xl hover:bg-slate-800/50 cursor-pointer transition-all">
+                        <p class="text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-widest">Master Plate Template</p>
+                        <input type="file" onchange="loadImg(this, 'plate')" class="text-[10px] w-full text-slate-500">
+                    </label>
+                    <label class="block p-4 border border-dashed border-slate-600 rounded-2xl hover:bg-slate-800/50 cursor-pointer transition-all">
+                        <p class="text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-widest">ID Card Template</p>
+                        <input type="file" onchange="loadImg(this, 'id')" class="text-[10px] w-full text-slate-500">
+                    </label>
+                </div>
+                <button onclick="deleteAllData()" class="mt-4 w-full text-[9px] font-bold text-red-500/70 hover:text-red-400 uppercase tracking-[0.3em]">Purge All Records</button>
             </div>
-            <button onclick="deleteAllData()" class="mt-4 w-full text-[9px] font-bold text-red-500/70 hover:text-red-400 uppercase tracking-[0.3em]">Purge All Records</button>
         </div>
     </div>
 
@@ -162,7 +164,7 @@
 <div id="print-zone"></div>
 
 <script>
-    // আপনার নতুন মোস্তাফিজ প্রজেক্টের লিঙ্ক এখানে আপডেট করে দেওয়া হয়েছে
+    // আপনার নতুন মোস্তাফিজ প্রজেক্টের লিঙ্ক এখানে আপডেট করে দেওয়া হয়েছে
     const firebaseConfig = { databaseURL: "https://mostafiz-7ac89-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
@@ -177,9 +179,14 @@
             if (currentUser && usersData[currentUser]) {
                 document.getElementById('main-content').classList.remove('hidden');
                 document.getElementById('user-display').innerText = currentUser.toUpperCase();
-                if(currentUser === 'admin') {
+                
+                if(currentUser === 'admin' || currentUser === 'manager') {
                     document.getElementById('admin-panel').classList.remove('hidden');
-                    document.getElementById('admin-btns').classList.remove('hidden');
+                    if (currentUser === 'manager') {
+                        document.getElementById('admin-only-controls').classList.add('hidden');
+                    } else if (currentUser === 'admin') {
+                        document.getElementById('admin-btns').classList.remove('hidden');
+                    }
                 }
                 syncData();
             } else {
@@ -202,13 +209,13 @@
 
     function renderStats() {
         const counts = {}; entries.forEach(e => counts[e.user] = (counts[e.user] || 0) + 1);
-        if(currentUser === 'admin') {
+        if(currentUser === 'admin' || currentUser === 'manager') {
             document.getElementById('total-count').innerText = entries.length;
             let html = "";
             Object.keys(usersData).forEach(u => {
                 html += `<div class="bg-slate-900/50 p-3 rounded-xl flex justify-between items-center border border-slate-800">
                     <span class="font-bold uppercase tracking-tighter text-slate-300">${u} <span class="text-indigo-400">(${counts[u]||0})</span></span>
-                    <button onclick="delUser('${u}')" class="text-red-900 hover:text-red-500 font-black">×</button>
+                    ${currentUser==='admin' && u!=='admin' ? `<button onclick="delUser('${u}')" class="text-red-900 hover:text-red-500 font-black">×</button>` : ''}
                 </div>`;
             });
             document.getElementById('user-stats').innerHTML = html;
@@ -216,7 +223,7 @@
     }
 
     function getFullDataText(d) {
-        return `মালিক: ${d.owner}\nপিতা: ${d.parent}\nহোল্ডিং: ${d.hld}\nওয়ার্ড: ${d.ward}\nঠিকানা: ${d.road}`;
+        return `মালিক: ${d.owner}\nপিতা/স্বামীর নাম: ${d.parent}\nহোল্ডিং: ${d.hld}\nওয়ার্ড: ${d.ward}\nঠিকানা: ${d.road}`;
     }
 
     function saveData() {
@@ -244,7 +251,7 @@
     }
 
     function renderList() {
-        const list = (currentUser === 'admin') ? entries : entries.filter(e => e.user === currentUser);
+        const list = (currentUser === 'admin' || currentUser === 'manager') ? entries : entries.filter(e => e.user === currentUser);
         document.getElementById('list').innerHTML = list.slice().reverse().map(e => `
             <div class="luxury-card p-4 flex justify-between items-center group transition-all hover:bg-slate-800/40">
                 <div class="flex items-center gap-4">
